@@ -102,7 +102,18 @@ const buildTest = function (testName, opts) {
     saveInFiles(opts.inFiles);
     const args = [binLoc].concat(opts.args);
 
-    const spawnOpts = { cwd: tmpLoc, env: { BABEL_DISABLE_CACHE: true } };
+    const spawnOpts = {
+      cwd: tmpLoc,
+      env: {
+        BABEL_DISABLE_CACHE: true,
+        // browserslist writes a "caniuse-lite is outdated" warning to stderr
+        // once its pinned caniuse-lite data is more than 6 months old, which is
+        // unavoidable when this release is rebuilt long after it was published.
+        // assertTest() fails any fixture whose stderr does not match exactly,
+        // so silence just this warning; real stderr is still asserted.
+        BROWSERSLIST_IGNORE_OLD_DATA: "1",
+      },
+    };
     if (opts.ipc) {
       spawnOpts.stdio = ["pipe", "pipe", "pipe", "ipc"];
     }

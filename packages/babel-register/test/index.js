@@ -401,7 +401,21 @@ describe("@babel/register", function () {
 });
 
 function spawnNodeAsync(args, cwd = dirname, env) {
-  const spawn = child.spawn(process.execPath, args, { cwd, env });
+  // BROWSERSLIST_IGNORE_OLD_DATA: browserslist writes a "caniuse-lite is
+  // outdated" warning to stderr once its pinned caniuse-lite data is more than
+  // 6 months old, which is unavoidable when this release is rebuilt long after
+  // it was published. `output` below concatenates stderr into stdout, so the
+  // warning corrupts every inline snapshot / JSON.parse in this file.
+  // Spread the caller's `env` when one is given so the deliberately-minimal
+  // NODE_OPTIONS environments keep their exact shape.
+  const childEnv = {
+    // `||` not `??`: this file runs untranspiled on the Node 12 leg, which
+    // predates nullish coalescing (`SyntaxError: Unexpected token '?'`).
+    // `env` is only ever an object or undefined here, so the two agree.
+    ...(env || process.env),
+    BROWSERSLIST_IGNORE_OLD_DATA: "1",
+  };
+  const spawn = child.spawn(process.execPath, args, { cwd, env: childEnv });
 
   let output = "";
   let callback;

@@ -145,7 +145,17 @@ const buildTest = function (binName, testName, opts) {
     }
 
     args = args.concat(opts.args);
-    const env = { ...process.env, ...opts.env };
+    // BROWSERSLIST_IGNORE_OLD_DATA: browserslist writes a "caniuse-lite is
+    // outdated" warning to stderr once its pinned caniuse-lite data is more
+    // than 6 months old, which is unavoidable when this release is rebuilt
+    // long after it was published. assertTest() throws on *any* stderr a
+    // fixture does not declare, and spawn.stderr is piped into the executor's
+    // stdin below, where the extra lines desync line-driven executors.
+    const env = {
+      ...process.env,
+      BROWSERSLIST_IGNORE_OLD_DATA: "1",
+      ...opts.env,
+    };
 
     const spawn = child.spawn(process.execPath, args, { env, cwd: tmpLoc });
 

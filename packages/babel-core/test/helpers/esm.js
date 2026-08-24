@@ -63,7 +63,13 @@ async function spawn(runner, filename, cwd = process.cwd()) {
     require.resolve(`../fixtures/babel-${runner}.mjs`),
     // pass `cwd` as params as `process.cwd()` will normalize `cwd` on macOS
     [filename, cwd],
-    { cwd, env: process.env },
+    // BROWSERSLIST_IGNORE_OLD_DATA: browserslist writes a "caniuse-lite is
+    // outdated" warning to stderr once its pinned caniuse-lite data is more
+    // than 6 months old, which is unavoidable when this release is rebuilt
+    // long after it was published. The stderr check below treats *any* stderr
+    // output as a thrown error, so the warning fails tests that have nothing
+    // to do with browser targets.
+    { cwd, env: { ...process.env, BROWSERSLIST_IGNORE_OLD_DATA: "1" } },
   );
 
   const EXPERIMENTAL_WARNING =

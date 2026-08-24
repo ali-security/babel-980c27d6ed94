@@ -30,10 +30,26 @@ run.next();
 const batchedStrings = [];
 let batchId = 0;
 
-process.stdin.on("data", async function listener(chunk) {
-  const str = String(chunk).trim();
-  if (!str) return;
+let pendingLine = "";
+let queue = Promise.resolve();
 
+// A stdin chunk is not guaranteed to carry exactly one line: when babel writes
+// several --verbose "src/x.js -> lib/x.js" lines within the same tick (which is
+// what happens on the watch-triggered recompilation) the pipe coalesces them
+// into a single chunk. The generator above consumes one line per `yield`, so
+// split chunks on newlines and feed it line by line, buffering partial lines.
+process.stdin.on("data", function listener(chunk) {
+  const lines = (pendingLine + String(chunk)).split("\n");
+  pendingLine = lines.pop();
+
+  for (const line of lines) {
+    const str = line.trim();
+    if (!str) continue;
+    queue = queue.then(() => handleLine(str));
+  }
+});
+
+async function handleLine(str) {
   if (str.startsWith("src")) {
     batchedStrings.push(str);
   } else {
@@ -54,7 +70,7 @@ process.stdin.on("data", async function listener(chunk) {
   if ((await run.next(str)).done) {
     process.exit(0);
   }
-});
+}
 
 function logFile(file) {
   console.log("EXECUTOR", file, JSON.stringify(fs.readFileSync(file, "utf8")));
